@@ -1,17 +1,16 @@
 use std::net::UdpSocket;
-use std::str::from_utf8;
 use std::time::Instant;
 
+mod bencode;
+
+use crate::bencode::decode;
+
 enum Router {
-    Bittorrent,
-    Utorrent,
     Transmissionbt,
 }
 
 const fn get_ip(router: Router) -> &'static str {
     match router {
-        Router::Bittorrent => "67.215.246.10",
-        Router::Utorrent => "82.221.103.244",
         Router::Transmissionbt => "87.98.162.88",
     }
 }
@@ -32,22 +31,12 @@ fn main() -> std::io::Result<()> {
     let (amt, _) = socket.recv_from(&mut buf)?;
 
     let recieved = &buf[..amt];
-    let string = match from_utf8(recieved) {
-        Ok(s) => s,
-        Err(_) => {
-            let hex_string: Vec<String> = recieved.iter().map(|b| format!("{:02X}", b)).collect();
-            let hex_string = hex_string.join("");
-            println!("Invalid UTF-8 response: {}", hex_string);
-            ""
-        }
-    };
-
-    println!("Received: {string}");
-
-    if recieved == b"pong" {
-        let elapsed_time = start_time.elapsed();
-        println!("Ping time: {:?}", elapsed_time);
-    }
+    let decoded = decode(recieved);
+    println!(
+        "Recieved {:?}, time {}",
+        decoded,
+        start_time.elapsed().as_secs()
+    );
 
     Ok(())
 }
